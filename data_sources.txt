@@ -1,0 +1,81 @@
+Climate data:
+
+Create a project on google cloud.  Mine was called mybigquerytest-144413
+
+To get started, I installed gcloud:
+https://cloud.google.com/sdk/downloads#interactive
+
+And I also did a pip install:
+pip install --upgrade google-cloud
+pip install matplotlib scipy
+
+export GOOGLE_APPLICATION_CREDENTIALS="/Users/psterne/Desktop/pycon/MyBigQueryTest-926f183d0773.json"
+
+git clone https://github.com/GoogleCloudPlatform/python-docs-samples.git
+cd python-docs-samples/bigquery/api
+python getting_started.py mybigquerytest-144413
+
+
+For plotting purposes:
+brew install gdal
+
+https://sourceforge.net/projects/matplotlib/files/matplotlib-toolkits/basemap-1.0.7/basemap-1.0.7.tar.gz/download?use_mirror=tenet
+
+Data for climate:
+https://cloudplatform.googleblog.com/2016/09/global-historical-daily-weather-data-now-available-in-BigQuery.html
+https://cloud.google.com/bigquery/public-data/noaa-ghcn
+https://bigquery.cloud.google.com/dataset/bigquery-public-data:ghcn_d
+
+
+Bounding box:
+Bottom left: -35, 15
+Top right:   -21, 35
+
+SELECT
+  stn.id, stn.name, stn.latitude, stn.longitude
+FROM
+  [bigquery-public-data:ghcn_d.ghcnd_stations] as stn
+WHERE
+  latitude > -35 AND latitude < -21 AND
+  longitude > +15 AND longitude < +35
+
+=> 1407 stations
+
+
+
+SELECT
+    stn.id,
+    stn.name,
+    stn.latitude,
+    stn.longitude,
+    date,
+    MAX(prcp) AS prcp,
+    MAX(tmin) AS tmin,
+    MAX(tmax) AS tmax
+FROM
+    [bigquery-public-data:ghcn_d.ghcnd_stations] as stn
+JOIN
+  (SELECT
+    id,
+    STRING(wx.date) AS date,
+    IF (wx.element = 'PRCP', wx.value/10, NULL) AS prcp,
+    IF (wx.element = 'TMIN', wx.value/10, NULL) AS tmin,
+    IF (wx.element = 'TMAX', wx.value/10, NULL) AS tmax
+  FROM
+    [bigquery-public-data:ghcn_d.ghcnd_2016] AS wx
+  WHERE
+    qflag IS NULL
+    AND value IS NOT NULL ) AS wx
+ON
+  stn.id = wx.id
+WHERE
+  latitude > -35 AND latitude < -21
+  AND longitude > +15 AND longitude < +35
+GROUP BY
+  stn.id,
+  stn.name,
+  stn.latitude,
+  stn.longitude,
+  date
+
+=> Now run for each year that you're interested in. See download_sa_weather.py
